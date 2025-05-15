@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Controle de Instrução</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    input, textarea, button, label {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    table th, table td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Controle de Instrução</h2>
+    <label>Data/Hora</label>
+    <input type="datetime-local" id="dataHora" />
+
+    <label>Nome do Instrutor</label>
+    <input type="text" id="instrutor" />
+
+    <label>Tema da Instrução</label>
+    <input type="text" id="tema" />
+
+    <label>Importar Planilha (.csv)</label>
+    <input type="file" id="csvFile" accept=".csv" />
+
+    <button onclick="carregarCSVDoGitHub()">Carregar CSV do GitHub</button>
+
+    <table id="tabela">
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+
+    <button onclick="salvarParticipantes()">Salvar</button>
+  </div>
+
+  <script>
+    let participantes = [];
+
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          exibirParticipantes(results.data, results.meta.fields);
+        }
+      });
+    });
+
+    function carregarCSVDoGitHub() {
+      const url = "https://raw.githubusercontent.com/teu-usuario/teu-repo/main/ficheiro.csv"; // <- substituir pelo caminho correto
+      Papa.parse(url, {
+        download: true,
+        header: true,
+        complete: function(results) {
+          exibirParticipantes(results.data, results.meta.fields);
+        }
+      });
+    }
+
+    function exibirParticipantes(data, headers) {
+      participantes = data;
+      const thead = document.querySelector('#tabela thead');
+      const tbody = document.querySelector('#tabela tbody');
+
+      thead.innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '<th>Participou?</th></tr>';
+      tbody.innerHTML = '';
+
+      participantes.forEach((p, i) => {
+        const row = document.createElement('tr');
+        row.innerHTML = headers.map(h => `<td>${p[h]}</td>`).join('') + `<td><input type="checkbox" data-index="${i}" /></td>`;
+        tbody.appendChild(row);
+      });
+    }
+
+    function salvarParticipantes() {
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      const dataHora = document.getElementById('dataHora').value;
+      const instrutor = document.getElementById('instrutor').value;
+      const tema = document.getElementById('tema').value;
+
+      const selecionados = Array.from(checkboxes)
+        .filter(c => c.checked)
+        .map(c => participantes[c.dataset.index]);
+
+      const csvContent = [
+        ['Data/Hora', 'Instrutor', 'Tema', ...Object.keys(selecionados[0] || {})],
+        ...selecionados.map(p => [dataHora, instrutor, tema, ...Object.values(p)])
+      ];
+
+      const csv = Papa.unparse(csvContent);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      saveAs(blob, 'participantes_instrucao.csv');
+    }
+  </script>
+</body>
+</html>
